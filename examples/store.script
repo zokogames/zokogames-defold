@@ -1,0 +1,31 @@
+-- Minimal purchase flow for Defold. Attach to any game object.
+-- In the editor and on native targets the simulator answers with a three-item test catalogue;
+-- in an HTML5 build the portal's real checkout opens.
+local zoko = require "zokogames.zokogames"
+
+function init(self)
+	zoko.init(function(err)
+		if err or not zoko.store.is_available() then return end   -- hide your shop button here
+		zoko.store.get_catalog_items({ limit = 20 }, function(e, items)
+			if e or #items == 0 then return end
+			for _, item in ipairs(items) do print(item.sku, item.name) end
+			local first = items[1]
+			zoko.store.buy_item(first.sku, function(buy_err, paid)
+				if zoko.is_error(buy_err, "purchaseCancelled") then
+					print("player closed the checkout")
+				elseif zoko.is_error(buy_err, "userNotAuthenticated") then
+					zoko.user.show_auth_prompt()
+				elseif buy_err then
+					print(buy_err.code, buy_err.message)
+				else
+					print("paid:", paid.itemId)                    -- verify ownership on your server
+					zoko.store.get_purchase_token(function(_, token) print("purchase token:", token) end)   -- send to your server
+					if first.consumable then zoko.store.consume_item(first.sku, 1) end
+					zoko.store.get_player_inventory({ limit = 50 }, function(_, owned)
+						for _, o in ipairs(owned or {}) do print(o.sku, o.quantity) end
+					end)
+				end
+			end)
+		end)
+	end)
+end

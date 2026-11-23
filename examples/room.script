@@ -1,0 +1,33 @@
+-- Two-player room example for Defold (room data channel, SDK 1.3.0). Attach to any game object.
+-- In the editor and on native targets the simulator provides one room that loops your own messages back;
+-- in an HTML5 build on the portal the other player's messages arrive through the listener.
+local zoko = require "zokogames.zokogames"
+
+function init(self)
+	msg.post(".", "acquire_input_focus")
+	zoko.init(function(err)
+		if err then return end
+		zoko.game.room.set_listener(self, function(self, event, data)
+			if event == "message" then
+				print("message from", data.from, data.data.type)
+			elseif event == "state" then
+				print("state", data.state.turn)
+			elseif event == "members" then
+				print("players in the room", #data)
+			elseif event == "host_changed" then
+				print("host is", data.host_id, "me:", data.is_host)
+				if data.is_host then zoko.game.room.set_state({ turn = "X" }) end
+			elseif event == "error" then
+				print("room error", data.code, data.message)
+			end
+		end)
+		zoko.game.update_room({ roomId = "demo-room", isJoinable = true })
+	end)
+end
+
+function on_input(self, action_id, action)
+	if action_id == hash("key_space") and action.pressed and zoko.is_initialized then
+		zoko.game.room.send({ type = "ping" }, function(err) if err then print(err.code) end end)
+		if zoko.game.room.is_host() then zoko.game.room.set_state({ lastPing = os.time() }) end
+	end
+end

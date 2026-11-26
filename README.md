@@ -5,7 +5,7 @@ and a Lua API. With the extension built in, the browser SDK pushes results strai
 the module falls back to polling `html5.run` every 50 ms. Outside HTML5 a Lua simulator answers. All code is our own; no third-party Defold
 extension was read or reused, so no attribution is required.
 
-Version 1.8.0 (written against the JavaScript SDK `@zoko/sdk` 1.8.0). Changes: [CHANGELOG.md](./CHANGELOG.md).
+Version 1.8.1 (written against the JavaScript SDK `@zoko/sdk` 1.8.1). Changes: [CHANGELOG.md](./CHANGELOG.md).
 Status: checked with the official build tool for Defold 1.14.1. The project resolves the library and bundles for the
 web, the Lua module and JavaScript library pass every call in a browser against the SDK's local mode, and the C++ file
 compiles against the 1.14.1 headers. The native extension itself has not been through the engine's build server, and
@@ -16,6 +16,7 @@ version and the exact error to developer support.
 
 | Wrapper | ZokoGames SDK |
 |---|---|
+| 1.8.1 | @zoko/sdk 1.8.1 |
 | 1.8.0 | @zoko/sdk 1.8.0 |
 | 1.7.0 | @zoko/sdk 1.7.0 |
 | 1.6.2 | @zoko/sdk 1.6.1 |

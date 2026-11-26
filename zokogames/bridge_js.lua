@@ -193,6 +193,11 @@ return [==[
     var idbStop = null;
     function stopIdbMirror() {
       if (idbStop) { idbStop(); idbStop = null; }
+      // The Unity template and the Godot shells start the mirror themselves and keep its stop function here.
+      if (typeof window.zokoStopMirrorIndexedDB === 'function') {
+        window.zokoStopMirrorIndexedDB();
+        window.zokoStopMirrorIndexedDB = null;
+      }
     }
 
     function simple(mod, fn) {

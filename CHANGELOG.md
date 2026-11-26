@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.8.1 (2026-11-26)
+
+- Written against JavaScript SDK 1.8.1 (scores sealed on the portal's clock); no API change.
+
 ## 1.8.0 (2026-11-25)
 
 - Targets the JavaScript SDK 1.8.0 (additive). The constant that reports the SDK release now reads `"1.8.0"` (`zokogames.VERSION`).

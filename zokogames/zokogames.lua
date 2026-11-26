@@ -14,7 +14,7 @@
 local bridge_source = require "zokogames.bridge_js"
 
 local M = {}
-M.VERSION = "1.8.0"
+M.VERSION = "1.8.1"
 --- Every error code an SDK call can raise, grouped by module (the JS SDK's ERROR_CODES).
 M.ERROR_CODES = {
 	ad = { "adsDisabled", "unfilled", "adblock", "adCooldown", "other" },

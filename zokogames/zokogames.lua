@@ -14,7 +14,7 @@
 local bridge_source = require "zokogames.bridge_js"
 
 local M = {}
-M.VERSION = "1.7.0"
+M.VERSION = "1.8.0"
 --- Every error code an SDK call can raise, grouped by module (the JS SDK's ERROR_CODES).
 M.ERROR_CODES = {
 	ad = { "adsDisabled", "unfilled", "adblock", "adCooldown", "other" },
@@ -58,6 +58,8 @@ M.is_initialized = false
 M.is_simulated = false
 M.is_user_account_available = false
 M.is_instant_multiplayer = false
+--- The read-only game id the portal sends at init (JS: game.gameId); "" before init or when absent.
+M.game_id = ""
 --- True while the player has no connection (JS: game.isOffline). False on older SDKs and portals.
 M.is_offline = false
 M.is_store_available = false
@@ -301,6 +303,7 @@ function M.init(callback)
 			M.system_info = r.systemInfo or {}
 			M.is_user_account_available = r.isUserAccountAvailable or false
 			M.is_instant_multiplayer = r.isInstantMultiplayer or false
+			M.game_id = type(r.gameId) == "string" and r.gameId or ""
 			M.is_offline = r.isOffline == true
 			M.is_store_available = r.storeAvailable or false
 			M.invite_params = r.inviteParams
@@ -388,6 +391,9 @@ end
 
 function M.banner.clear_banner(id, callback) call("banner.clearBanner", { id = id }, callback) end
 function M.banner.clear_all_banners(callback) call("banner.clearAllBanners", {}, callback) end
+--- SDK 1.8.0: hide or show every banner without clearing it.
+function M.banner.hide_all_banners(callback) call("banner.hideAllBanners", {}, callback) end
+function M.banner.show_all_banners(callback) call("banner.showAllBanners", {}, callback) end
 
 -- ------------------------------------------------------------------ game
 
@@ -434,6 +440,8 @@ end
 
 function M.game.get_settings() return M.settings end
 function M.game.is_instant_multiplayer() return M.is_instant_multiplayer end
+--- The read-only game id the portal sends at init (JS: game.gameId); "" before init or when absent.
+function M.game.get_game_id() return M.game_id end
 --- Deprecated alias of is_instant_multiplayer (JS: isInstantJoin).
 function M.game.is_instant_join() return M.is_instant_multiplayer end
 function M.game.is_offline() return M.is_offline end
@@ -546,6 +554,10 @@ function M.user.show_account_link_prompt(callback) call("user.showAccountLinkPro
 function M.user.submit_score(encrypted_score, score, callback)
 	call("user.submitScore", { encryptedScore = encrypted_score, score = score }, callback)
 end
+--- SDK 1.8.0. callback(err, payload): pass payload to submit_score. earned_at is Unix ms of a delayed copy; nil or 0 is a live run.
+function M.user.encrypt_score(score, key, callback, earned_at)
+	call("user.encryptScore", { score = score, key = key, earnedAt = earned_at or 0 }, callback)
+end
 function M.user.add_auth_listener(fn) auth_listeners[#auth_listeners + 1] = fn end
 function M.user.remove_auth_listener(fn) remove(auth_listeners, fn) end
 
@@ -582,6 +594,15 @@ function M.data.mirror_local_storage(options)
 	return false, e
 end
 function M.data.stop_mirror_local_storage() return (call_sync("data.stopMirrorLocalStorage", {})) end
+--- Restore IndexedDB databases from the cloud save and keep copying their writes into it (JS: data.mirrorIndexedDB, SDK 1.7.0).
+--- Defold's sys.save files live in IndexedDB on HTML5: call it right after init and wait for callback(error) before sys.load.
+--- `databases` is an optional list of database names (nil or {} mirrors all). Later failures go to the mirror error listeners.
+function M.data.mirror_indexeddb(databases, callback)
+	local args = {}
+	if type(databases) == "table" and #databases > 0 then args.databases = databases end
+	call("data.mirrorIndexedDB", args, callback)
+end
+function M.data.stop_mirror_indexeddb() return (call_sync("data.stopMirrorIndexedDB", {})) end
 --- fn(error) when a mirrored key cannot be saved, for example dataLimitExceeded when the 1 MB cloud save is full.
 function M.data.add_mirror_error_listener(fn) mirror_error_listeners[#mirror_error_listeners + 1] = fn end
 function M.data.remove_mirror_error_listener(fn) remove(mirror_error_listeners, fn) end
@@ -720,6 +741,18 @@ local function sim_user()
 	return { username = M.sim.username, profilePictureUrl = "", __dangerousUserId = M.sim.user_id }
 end
 
+local B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+local function sim_base64(s)
+	local out = {}
+	for i = 1, #s, 3 do
+		local a, b, c = s:byte(i, i + 2)
+		local n = a * 65536 + (b or 0) * 256 + (c or 0)
+		local c1, c2, c3, c4 = math.floor(n / 262144) % 64, math.floor(n / 4096) % 64, math.floor(n / 64) % 64, n % 64
+		out[#out + 1] = B64:sub(c1 + 1, c1 + 1) .. B64:sub(c2 + 1, c2 + 1) .. (b and B64:sub(c3 + 1, c3 + 1) or "=") .. (c and B64:sub(c4 + 1, c4 + 1) or "=")
+	end
+	return table.concat(out)
+end
+
 local function sim_settings() return { disableChat = M.sim.disable_chat or M.sim.kids_mode, kidsMode = M.sim.kids_mode, muteAudio = M.sim.mute_audio } end
 
 sim = setmetatable({}, { __call = function(_, id, method, args)
@@ -808,6 +841,7 @@ function sim.sync(method, args)
 		log("data.mirrorLocalStorage ignored (no browser localStorage outside HTML5)")
 		return true, nil
 	elseif method == "data.stopMirrorLocalStorage" then return true, nil
+	elseif method == "data.stopMirrorIndexedDB" then return true, nil
 	elseif method == "room.selfId" then return true, SIM_ROOM_SELF
 	elseif method == "room.isHost" then return true, true
 	elseif method == "room.members" then return true, { { id = SIM_ROOM_SELF, username = M.sim.username, profilePictureUrl = "" } }
@@ -840,7 +874,7 @@ function sim.run(id, method, a)
 				browser = { name = "Defold", version = sys.get_engine_info().version }, applicationType = "web",
 			},
 			isUserAccountAvailable = s.account_available, isInstantMultiplayer = false, isOffline = s.offline,
-			storeAvailable = s.store_available,
+			storeAvailable = s.store_available, gameId = "simulated-game",
 		})
 	end
 	if s.disabled then return fail("sdkDisabled", "The SDK is disabled in this environment") end
@@ -879,6 +913,7 @@ function sim.run(id, method, a)
 		ok()
 	elseif method == "banner.clearBanner" then sim_banner_at[a.id] = nil; ok()
 	elseif method == "banner.clearAllBanners" then sim_banner_at = {}; ok()
+	elseif method == "banner.hideAllBanners" or method == "banner.showAllBanners" then log(method); ok()
 	elseif method:sub(1, 5) == "game." and (method == "game.gameplayStart" or method == "game.gameplayStop" or method == "game.loadingStart"
 		or method == "game.loadingStop" or method == "game.hideInviteButton" or method == "game.happytime" or method == "game.leftRoom" or method == "game.clearGameContext") then
 		log(method)
@@ -888,6 +923,9 @@ function sim.run(id, method, a)
 		ok()
 	elseif method == "game.setGameContext" then
 		if type(a.context) ~= "table" then return fail("invalidArgument", "context must be an object of string, number or boolean values") end
+		ok()
+	elseif method == "data.mirrorIndexedDB" then
+		log("data.mirrorIndexedDB ignored (no IndexedDB outside HTML5)")
 		ok()
 	elseif method == "game.reportChat" then
 		local r = a.report
@@ -942,6 +980,14 @@ function sim.run(id, method, a)
 			return fail("invalidArgument", "submitScore needs { encryptedScore: string, score: number }")
 		end
 		ok()
+	elseif method == "user.encryptScore" then
+		if not sim_logged_in then return fail("userNotAuthenticated", "No user is signed in") end
+		local sc = a.score
+		if type(sc) ~= "number" or sc ~= sc or sc == math.huge or sc == -math.huge or type(a.key) ~= "string" or a.key == "" then
+			return fail("invalidArgument", "encryptScore needs { score: number, key: non-empty string }")
+		end
+		local at = (type(a.earnedAt) == "number" and a.earnedAt > 0) and a.earnedAt or os.time() * 1000
+		ok("simulated-score." .. sim_base64(string.format("%s|%d", tostring(sc), at)))
 	elseif method:sub(1, 6) == "store." then sim.store(id, method, a)
 	elseif method == "achievements.list" then
 		local out = {}

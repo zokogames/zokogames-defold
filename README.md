@@ -5,7 +5,7 @@ and a Lua API. With the extension built in, the browser SDK pushes results strai
 the module falls back to polling `html5.run` every 50 ms. Outside HTML5 a Lua simulator answers. All code is our own; no third-party Defold
 extension was read or reused, so no attribution is required.
 
-Version 1.7.0 (written against the JavaScript SDK `@zoko/sdk` 1.7.0). Changes: [CHANGELOG.md](./CHANGELOG.md).
+Version 1.8.0 (written against the JavaScript SDK `@zoko/sdk` 1.8.0). Changes: [CHANGELOG.md](./CHANGELOG.md).
 Status: checked with the official build tool for Defold 1.14.1. The project resolves the library and bundles for the
 web, the Lua module and JavaScript library pass every call in a browser against the SDK's local mode, and the C++ file
 compiles against the 1.14.1 headers. The native extension itself has not been through the engine's build server, and
@@ -16,6 +16,7 @@ version and the exact error to developer support.
 
 | Wrapper | ZokoGames SDK |
 |---|---|
+| 1.8.0 | @zoko/sdk 1.8.0 |
 | 1.7.0 | @zoko/sdk 1.7.0 |
 | 1.6.2 | @zoko/sdk 1.6.1 |
 | 1.6.1 | @zoko/sdk 1.6.0 |
@@ -109,6 +110,8 @@ Every member of the JavaScript SDK is available. Names follow Lua snake_case: `S
 | `banner.requestResponsiveBanner` | `zoko.banner.request_responsive_banner(id, rect, callback)` |  |
 | `banner.clearBanner` | `zoko.banner.clear_banner(id, callback)` |  |
 | `banner.clearAllBanners` | `zoko.banner.clear_all_banners(callback)` |  |
+| `banner.hideAllBanners` | `zoko.banner.hide_all_banners(callback)` | Added in SDK 1.8.0. Hides every banner without clearing it. |
+| `banner.showAllBanners` | `zoko.banner.show_all_banners(callback)` | Added in SDK 1.8.0. Shows the hidden banners again. |
 | `game.settings` | `zoko.game.get_settings()` / `zoko.settings` | `{ disableChat, muteAudio, kidsMode }`; `kidsMode` (1.5.0) is nil on older portals: test `== true`. |
 | `game.addSettingsChangeListener` | `zoko.game.add_settings_change_listener(fn)` |  |
 | `game.removeSettingsChangeListener` | `zoko.game.remove_settings_change_listener(fn)` |  |
@@ -126,8 +129,8 @@ Every member of the JavaScript SDK is available. Names follow Lua snake_case: `S
 | `game.isInstantMultiplayer` | `zoko.game.is_instant_multiplayer()` |  |
 | `game.isInstantJoin` | `zoko.game.is_instant_join()` | Deprecated alias. |
 | `game.isOffline` | `zoko.game.is_offline()` / `zoko.is_offline` | Boolean; false on older SDKs and portals. Simulator: `zoko.sim.offline`. |
-| `game.gameId` | Not bound yet (JS only): the next plugin release adds it. | Read-only id the portal sends at init (JS SDK 1.6.2). |
-| `data.mirrorIndexedDB` | Not bound yet (JS only): the next plugin release adds it. | Added in SDK 1.7.0. Must run in the page before the engine starts (the restore finishes before the game reads its files), so it is not a thin pass-through; a game on the web can call `ZokoSDK.data.mirrorIndexedDB` from its own page script before loading the engine. |
+| `game.gameId` | `zoko.game.get_game_id()` | Read-only id the portal sends at init (JS SDK 1.6.2); empty before init. Simulator: `simulated-game`. |
+| `data.mirrorIndexedDB` | `zoko.data.mirror_indexeddb(databases, callback)` / `zoko.data.stop_mirror_indexeddb()` | Added in SDK 1.7.0. `sys.save` / `sys.load` on HTML5 use IndexedDB: call it right after init and await the callback before `sys.load`. `databases` is a list of names, `nil` for all. Later failures: the mirror error listeners. |
 | `game.addOfflineListener` | `zoko.game.add_offline_listener(fn)` | `fn(offline)` with the new boolean. |
 | `game.removeOfflineListener` | `zoko.game.remove_offline_listener(fn)` |  |
 | `game.updateRoom` | `zoko.game.update_room(table, callback)` |  |
@@ -173,6 +176,7 @@ Every member of the JavaScript SDK is available. Names follow Lua snake_case: `S
 | `user.removeAuthListener` | `zoko.user.remove_auth_listener(fn)` |  |
 | `user.showAccountLinkPrompt` | `zoko.user.show_account_link_prompt(callback)` |  |
 | `user.submitScore` | `zoko.user.submit_score(encrypted_score, score, callback)` | Pass `""` as `encrypted_score` for a board without an encryption key. |
+| `user.encryptScore` | `zoko.user.encrypt_score(score, key, callback, earned_at)` | Added in SDK 1.8.0. `callback(err, payload)`; pass `payload` to `submit_score`. `earned_at` is Unix ms of a delayed copy, `nil` or `0` for a live run. Guests get `userNotAuthenticated`. |
 | `user.getXsollaUserToken` | `zoko.user.get_xsolla_user_token(callback)` | Deprecated alias of `zoko.store.get_purchase_token`. |
 | `ERROR_CODES` | `zoko.ERROR_CODES.<module>`, `zoko.is_error(err, code)` | Tables of code strings for `ad`, `banner`, `user`, `data`, `store`, `room`, `general`. |
 | `ERROR_CODE_DESCRIPTIONS` | Error codes table below | Not shipped as runtime text. |

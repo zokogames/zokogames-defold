@@ -1,6 +1,6 @@
 [project]
 title = ZokoGames SDK for Defold
-version = 1.7.0
+version = 1.8.0
 
 [library]
 include_dirs = zokogames

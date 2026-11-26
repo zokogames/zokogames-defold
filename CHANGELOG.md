@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.8.0 (2026-11-25)
+
+- Targets the JavaScript SDK 1.8.0 (additive). The constant that reports the SDK release now reads `"1.8.0"` (`zokogames.VERSION`).
+- `zoko.banner.hide_all_banners(callback)` and `zoko.banner.show_all_banners(callback)`: hide or show every banner without clearing it.
+- `zoko.user.encrypt_score(score, key, callback, earned_at)`: `callback(err, payload)` gives the payload for `submit_score`; guests get `userNotAuthenticated`, a bad score or key `invalidArgument`. The simulator answers with `simulated-score.<base64>`.
+- `zoko.game.get_game_id()` (`game.gameId`; simulator `simulated-game`), `zoko.data.mirror_indexeddb(databases, callback)` and `zoko.data.stop_mirror_indexeddb()` (`data.mirrorIndexedDB`): `sys.save` files on HTML5 live in IndexedDB, so call the mirror right after init and wait for its callback before `sys.load`.
+
 ## 1.7.0 (2026-11-23)
 
 - Targets the JavaScript SDK 1.7.0 (additive). The constant that reports the SDK release now reads `"1.7.0"` (`zokogames.VERSION`).
